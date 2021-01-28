@@ -27,15 +27,39 @@ const handleWithdrawTicket = async (ticket) => {
     console.log(update);
   }
 };
+
+const handleDepositTicket = async (ticket) => {
+  if (ticket.Amount > 1000 && ticket.FeeAmt !== 0) {
+    console.log(ticket);
+    ticket.FeeAmt = 0;
+    const update_response = await apex.RPCPromise(
+      'UpdateDepositTicket',
+      ticket
+    );
+    const update = JSON.parse(update_response.o);
+    console.log(update);
+  }
+};
+
 const main = async () => {
   try {
     const { Authenticated } = await apex.AuthenticateUser(creds);
     if (Authenticated) {
-      // I am just looking at withdraw tickets, but you could do this for deposit as well, by changing the filter
       apex.ws
-        .filter((x) => x.n === 'WithdrawTicketUpdateEvent')
-        .map((x) => JSON.parse(x.o))
-        .subscribe(handleWithdrawTicket);
+        .filter(
+          (x) =>
+            x.n === 'WithdrawTicketUpdateEvent' ||
+            x.n === 'DepositTicketUpdateEvent'
+        )
+        .subscribe((x) => {
+          if (x.n === 'WithdrawTicketUpdateEvent') {
+            handleWithdrawTicket(JSON.parse(x.o));
+          } else if (x.n === 'DepositTicketUpdateEvent') {
+            handleDepositTicket(JSON.parse(x.o));
+          } else {
+            return;
+          }
+        });
       const sub_response = await apex.RPCPromise(
         'SubscribeAllAccountEvents',
         {}
